@@ -404,12 +404,13 @@ metaExpr <- function(expr, env = parent.frame(), quoted = FALSE, localize = "aut
 #' @rdname expandChain
 #' @name expandChain
 #' @export
-newExpansionContext <- function() {
+newExpansionContext <- function(ns = TRUE) {
   self <- structure(
     list(
       uidToVarname = fastmap::fastmap(missing_default = NULL),
       seenVarname = fastmap::fastmap(missing_default = FALSE),
       uidToSubstitute = fastmap::fastmap(missing_default = NULL),
+      ns = ns,
       # Function to make a (hopefully but not guaranteed to be new) varname
       makeVarname = local({
         nextVarId <- 0L
@@ -702,6 +703,9 @@ expandChain <- function(..., .expansionContext = newExpansionContext()) {
   # we'll append their code to this list (including assigning them to a label).
   dependencyCode <- list()
 
+  # Logical indicating whether varname is namespaced inside of modules
+  ns <- .expansionContext$ns
+
   # Override the rexprMetaReadFilter while we generate code. This is a filter
   # function that metaReactive/metaReactive2 will call when someone asks them
   # for their meta value. The `x` is the (lazily evaluated) logic for actually
@@ -746,7 +750,7 @@ expandChain <- function(..., .expansionContext = newExpansionContext()) {
     if (is.null(varname) || varname == "" || length(varname) != 1) {
       varname <- .expansionContext$makeVarname()
     } else {
-      if (!is.null(domain)) {
+      if (ns && !is.null(domain)) {
         varname <- gsub("-", "_", domain$ns(varname))
       }
     }
